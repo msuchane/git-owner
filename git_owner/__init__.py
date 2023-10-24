@@ -5,6 +5,7 @@ from collections import Counter
 import logging
 import re
 import subprocess
+from typing import Optional
 
 
 def cli() -> argparse.Namespace:
@@ -123,12 +124,6 @@ def sort_shares(shares: Shares) -> SortedShares:
     return sorted_shares
 
 
-def report_shares(shares: SortedShares) -> None:
-    for (index, (author, fraction)) in enumerate(shares):
-        rank = index + 1
-        print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
-
-
 def likely_owner(shares: SortedShares) -> str:
     most_contributions = shares[0]
     author = most_contributions[0]
@@ -159,14 +154,26 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         combined_shares = combine_shares(log_shares, blame_shares)
         sorted_shares = sort_shares(combined_shares)
 
-        return sorted_shares
+    return sorted_shares
 
 
-def print_report(shares: SortedShares, args: argparse.Namespace) -> None:
+def report_shares(shares: SortedShares, header: Optional[str]) -> None:
+    if header:
+        print(f"-- {header} --")
+    for (index, (author, fraction)) in enumerate(shares):
+        rank = index + 1
+        print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
+
+
+def print_report(shares: SortedShares, file: str, args: argparse.Namespace) -> None:
     if args.most_likely:
         print(likely_owner(shares))
     else:
-        report_shares(shares)
+        if len(args.files) > 1:
+            header = file
+        else:
+            header = None
+        report_shares(shares, header)
 
 
 if __name__ == "__main__":
@@ -181,4 +188,4 @@ if __name__ == "__main__":
 
     for file in args.files:
         shares = estimate_file(file, args)
-        print_report(shares, args)
+        print_report(shares, file, args)
