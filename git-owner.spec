@@ -1,6 +1,6 @@
 Name: git-owner
 Summary: Estimate who the approximate owner of a file is in a Git repository.
-Version: 0.1.0
+Version: 0.1.1
 Release: 1%{?dist}
 License: ASL 2.0
 URL: https://github.com/msuchane/git-owner
