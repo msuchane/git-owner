@@ -22,6 +22,11 @@ def cli() -> argparse.Namespace:
         action='store_true',
         help='Show only the most likely owner without additional statistics.')
     parser.add_argument(
+        '-n',
+        '--names',
+        action='store_true',
+        help='Identify users by name rather than by email.')
+    parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
@@ -45,20 +50,28 @@ def cli() -> argparse.Namespace:
     return args
 
 
-def log_contributors(file: str) -> list[str]:
-    log = subprocess.run(["git", "log", "--follow", "--format=%ae", file], stdout=subprocess.PIPE)
+def log_contributors(file: str, names: bool) -> list[str]:
+    if names:
+        user_format = r"%an"
+    else:
+        user_format = r"%ae"
+
+    log = subprocess.run(["git", "log", "--follow", f"--format={user_format}", file], stdout=subprocess.PIPE)
     contributors = log.stdout.decode().splitlines()
 
     return contributors
 
 
-def blame_contributors(file: str) -> list[str]:
+def blame_contributors(file: str, names: bool) -> list[str]:
     blame_contributors = []
 
     blame = subprocess.run(["git", "blame", "--line-porcelain", file], stdout=subprocess.PIPE)
     blame_text = blame.stdout.decode().splitlines()
 
-    author_regex = re.compile("^author-mail <(.+)>$")
+    if names:
+        author_regex = re.compile("^author (.+)$")
+    else:
+        author_regex = re.compile("^author-mail <(.+)>$")
 
     for index, line in enumerate(blame_text):
         re_match = re.search(author_regex, line)
@@ -125,21 +138,21 @@ def likely_owner(shares: SortedShares) -> str:
 
 def estimate_file(file: str, args: argparse.Namespace) -> None:
     if args.only_log:
-        from_log = log_contributors(file)
+        from_log = log_contributors(file, args.names)
         log_shares = contributor_shares(from_log)
         logging.debug(f"Contributors:\n{log_shares}")
         sorted_shares = sort_shares(log_shares)
     elif args.only_blame:
-        from_blame = blame_contributors(file)
+        from_blame = blame_contributors(file, args.names)
         blame_shares = contributor_shares(from_blame)
         logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
     else:
-        from_log = log_contributors(file)
+        from_log = log_contributors(file, args.names)
         log_shares = contributor_shares(from_log)
         logging.debug(f"Contributors in log:\n{log_shares}")
 
-        from_blame = blame_contributors(file)
+        from_blame = blame_contributors(file, args.names)
         blame_shares = contributor_shares(from_blame)
         logging.debug(f"Contributors in blame:\n{blame_shares}")
 
