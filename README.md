@@ -23,11 +23,11 @@ The tool is currently packaged for Fedora, CentOS Stream, and RHEL.
 * Estimate the ownership of a file in a Git repository:
 
     ```
-    git-repository]$ git-owner file
+    git-repository]$ git owner file
     ```
 
 * See available options:
 
     ```
-    git-repository]$ git-owner --help
+    git-repository]$ git owner --help
     ```
