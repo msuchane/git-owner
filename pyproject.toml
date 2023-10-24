@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "git-owner"
-version = "0.1.1"
+version = "0.1.2"
 description = "Estimate who the approximate owner of a file is in a Git repository."
 authors = ["Marek Suchánek <marek.suchanek@protonmail.com>"]
 readme = "README.md"
