@@ -7,7 +7,8 @@ URL: https://github.com/msuchane/git-owner
 Group: Applications/Text
 Source0: https://github.com/msuchane/%{name}/archive/refs/tags/v%{version}.tar.gz
 
-Requires: python3
+BuildArch: noarch
+Requires: python3 => 3.9
 Requires: git
 
 %description
