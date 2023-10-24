@@ -49,3 +49,15 @@ if __name__ == "__main__":
 
     print("log:", log_shares)
     print("blame:", blame_shares)
+
+    combined_shares = {}
+
+    for author, fraction in log_shares.items():
+        combined_shares[author] = fraction / 2
+
+    for author, fraction in blame_shares.items():
+        existing_value = combined_shares.get(author, 0)
+        combined = existing_value + (fraction / 2)
+        combined_shares[author] = combined
+
+    print(combined_shares)
