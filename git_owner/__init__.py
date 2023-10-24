@@ -8,25 +8,34 @@ def cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='git-owner',
         description='Estimate who the approximate owner of a file is in a Git repository.')
+
     parser.add_argument(
         'files',
         nargs='+',
         help='One or more files in the current Git repository.')
     parser.add_argument(
-        '-l',
-        '--only-log',
+        '-m',
+        '--most-likely',
         action='store_true',
-        help='Estimate only from Git log.')
-    parser.add_argument(
-        '-b',
-        '--only-blame',
-        action='store_true',
-        help='Estimate only from Git blame.')
+        help='Show only the most likely owner without additional statistics.')
     parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
         help='Show debugging messages.')
+
+    ex_group = parser.add_mutually_exclusive_group()
+
+    ex_group.add_argument(
+        '-l',
+        '--only-log',
+        action='store_true',
+        help='Estimate only from Git log.')
+    ex_group.add_argument(
+        '-b',
+        '--only-blame',
+        action='store_true',
+        help='Estimate only from Git blame.')
 
     args = parser.parse_args()
 
@@ -111,26 +120,33 @@ def likely_owner(shares: SortedShares) -> str:
     return author
 
 
-def estimate_file(file: str) -> None:
-    from_log = log_contributors(file)
-    log_shares = contributor_shares(from_log)
+def estimate_file(file: str, args: argparse.Namespace) -> None:
+    if args.only_log:
+        from_log = log_contributors(file)
+        log_shares = contributor_shares(from_log)
+        sorted_shares = sort_shares(log_shares)
+    elif args.only_blame:
+        from_blame = blame_contributors(file)
+        blame_shares = contributor_shares(from_blame)
+        sorted_shares = sort_shares(blame_shares)
+    else:
+        from_log = log_contributors(file)
+        log_shares = contributor_shares(from_log)
 
-    from_blame = blame_contributors(file)
-    blame_shares = contributor_shares(from_blame)
+        from_blame = blame_contributors(file)
+        blame_shares = contributor_shares(from_blame)
 
-    print("log:", log_shares)
-    print("blame:", blame_shares)
+        combined_shares = combine_shares(log_shares, blame_shares)
+        sorted_shares = sort_shares(combined_shares)
 
-    combined_shares = combine_shares(log_shares, blame_shares)
-
-    sorted_shares = sort_shares(combined_shares)
-
-    report_shares(sorted_shares)
-    print(likely_owner(sorted_shares))
+    if args.most_likely:
+        print(likely_owner(sorted_shares))
+    else:
+        report_shares(sorted_shares)
 
 
 if __name__ == "__main__":
     args = cli()
 
     for file in args.files:
-        estimate_file(file)
+        estimate_file(file, args)
