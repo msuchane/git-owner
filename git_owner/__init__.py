@@ -1,6 +1,36 @@
+import argparse
 from collections import Counter
+import re
 import subprocess
-import sys
+
+
+def cli() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog='git-owner',
+        description='Estimate who the approximate owner of a file is in a Git repository.')
+    parser.add_argument(
+        'files',
+        nargs='+',
+        help='One or more files in the current Git repository.')
+    parser.add_argument(
+        '-l',
+        '--only-log',
+        action='store_true',
+        help='Estimate only from Git log.')
+    parser.add_argument(
+        '-b',
+        '--only-blame',
+        action='store_true',
+        help='Estimate only from Git blame.')
+    parser.add_argument(
+        '-v',
+        '--verbose',
+        action='store_true',
+        help='Show debugging messages.')
+
+    args = parser.parse_args()
+
+    return args
 
 
 def log_contributors(file: str) -> list[str]:
@@ -16,11 +46,14 @@ def blame_contributors(file: str) -> list[str]:
     blame = subprocess.run(["git", "blame", "--line-porcelain", file], stdout=subprocess.PIPE)
     blame_text = blame.stdout.decode().splitlines()
 
+    author_regex = re.compile("^author-mail <(.+)>$")
+
     for index, line in enumerate(blame_text):
-        if index % 13 == 2:
-            assert line.startswith("author-mail")
-            author = line[13:-1]
-            blame_contributors.append(author)
+        re_match = re.search(author_regex, line)
+
+        if re_match is not None:
+            captured = re_match.group(1)
+            blame_contributors.append(captured)
 
     return blame_contributors
 
@@ -66,14 +99,19 @@ def sort_shares(shares: Shares) -> SortedShares:
 
 
 def report_shares(shares: SortedShares) -> None:
-    for (index, (author, fraction)) in enumerate(sorted_shares):
+    for (index, (author, fraction)) in enumerate(shares):
         rank = index + 1
         print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
 
 
-if __name__ == "__main__":
-    file = sys.argv[1]
+def likely_owner(shares: SortedShares) -> str:
+    most_contributions = shares[0]
+    author = most_contributions[0]
 
+    return author
+
+
+def estimate_file(file: str) -> None:
     from_log = log_contributors(file)
     log_shares = contributor_shares(from_log)
 
@@ -88,3 +126,11 @@ if __name__ == "__main__":
     sorted_shares = sort_shares(combined_shares)
 
     report_shares(sorted_shares)
+    print(likely_owner(sorted_shares))
+
+
+if __name__ == "__main__":
+    args = cli()
+
+    for file in args.files:
+        estimate_file(file)
