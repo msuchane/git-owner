@@ -25,7 +25,7 @@ def blame_contributors(file: str) -> list[str]:
     return blame_contributors
 
 
-def contributor_shares(authors: list[str]) -> dict:
+def contributor_shares(authors: list[str]) -> dict[str, float]:
     counter = Counter(authors)
     total = counter.total()
 
@@ -36,6 +36,20 @@ def contributor_shares(authors: list[str]) -> dict:
         shares[author] = fraction
 
     return shares
+
+
+def combine_shares(log: dict[str, float], blame: dict[str, float]) -> dict[str, float]:
+    combined_shares = {}
+
+    for author, fraction in log.items():
+        combined_shares[author] = fraction / 2
+
+    for author, fraction in blame.items():
+        existing_value = combined_shares.get(author, 0)
+        combined = existing_value + (fraction / 2)
+        combined_shares[author] = combined
+
+    return combined_shares
 
 
 if __name__ == "__main__":
@@ -50,14 +64,12 @@ if __name__ == "__main__":
     print("log:", log_shares)
     print("blame:", blame_shares)
 
-    combined_shares = {}
+    combined_shares = combine_shares(log_shares, blame_shares)
 
-    for author, fraction in log_shares.items():
-        combined_shares[author] = fraction / 2
+    shares_items = list(combined_shares.items())
+    sorted_shares = sorted(shares_items, key=lambda item: item[1], reverse=True)
 
-    for author, fraction in blame_shares.items():
-        existing_value = combined_shares.get(author, 0)
-        combined = existing_value + (fraction / 2)
-        combined_shares[author] = combined
-
-    print(combined_shares)
+    for (index, (author, fraction)) in enumerate(sorted_shares):
+        rank = index + 1
+        percentage = fraction * 100
+        print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
