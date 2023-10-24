@@ -1,5 +1,6 @@
 import argparse
 from collections import Counter
+import logging
 import re
 import subprocess
 
@@ -124,17 +125,21 @@ def estimate_file(file: str, args: argparse.Namespace) -> None:
     if args.only_log:
         from_log = log_contributors(file)
         log_shares = contributor_shares(from_log)
+        logging.debug(f"Contributors:\n{log_shares}")
         sorted_shares = sort_shares(log_shares)
     elif args.only_blame:
         from_blame = blame_contributors(file)
         blame_shares = contributor_shares(from_blame)
+        logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
     else:
         from_log = log_contributors(file)
         log_shares = contributor_shares(from_log)
+        logging.debug(f"Contributors in log:\n{log_shares}")
 
         from_blame = blame_contributors(file)
         blame_shares = contributor_shares(from_blame)
+        logging.debug(f"Contributors in blame:\n{blame_shares}")
 
         combined_shares = combine_shares(log_shares, blame_shares)
         sorted_shares = sort_shares(combined_shares)
@@ -147,6 +152,13 @@ def estimate_file(file: str, args: argparse.Namespace) -> None:
 
 if __name__ == "__main__":
     args = cli()
+
+    # Configure the level of logging output
+    if args.verbose:
+        log_level=logging.DEBUG
+    else:
+        log_level=logging.WARNING
+    logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
 
     for file in args.files:
         estimate_file(file, args)
