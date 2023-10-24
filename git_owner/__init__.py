@@ -70,7 +70,7 @@ def blame_contributors(file: str) -> list[str]:
     return blame_contributors
 
 
-type Shares = dict[str, float]
+Shares = dict[str, float]
 
 
 def contributor_shares(authors: list[str]) -> Shares:
@@ -100,7 +100,7 @@ def combine_shares(log: Shares, blame: Shares) -> Shares:
     return combined_shares
 
 
-type SortedShares = list[tuple[str, float]]
+SortedShares = list[tuple[str, float]]
 
 
 def sort_shares(shares: Shares) -> SortedShares:
