@@ -7,6 +7,9 @@ URL: https://github.com/msuchane/git-owner
 Group: Applications/Text
 Source0: https://github.com/msuchane/%{name}/archive/refs/tags/v%{version}.tar.gz
 
+Requires: python3
+Requires: git
+
 %description
 Estimate who the approximate owner of a file is in a Git repository. Take into account the Git blame and Git log information.
 
