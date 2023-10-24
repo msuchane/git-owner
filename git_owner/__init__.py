@@ -25,7 +25,10 @@ def blame_contributors(file: str) -> list[str]:
     return blame_contributors
 
 
-def contributor_shares(authors: list[str]) -> dict[str, float]:
+type Shares = dict[str, float]
+
+
+def contributor_shares(authors: list[str]) -> Shares:
     counter = Counter(authors)
     total = counter.total()
 
@@ -38,7 +41,7 @@ def contributor_shares(authors: list[str]) -> dict[str, float]:
     return shares
 
 
-def combine_shares(log: dict[str, float], blame: dict[str, float]) -> dict[str, float]:
+def combine_shares(log: Shares, blame: Shares) -> Shares:
     combined_shares = {}
 
     for author, fraction in log.items():
@@ -50,6 +53,22 @@ def combine_shares(log: dict[str, float], blame: dict[str, float]) -> dict[str, 
         combined_shares[author] = combined
 
     return combined_shares
+
+
+type SortedShares = list[tuple[str, float]]
+
+
+def sort_shares(shares: Shares) -> SortedShares:
+    shares_items = list(shares.items())
+    sorted_shares = sorted(shares_items, key=lambda item: item[1], reverse=True)
+
+    return sorted_shares
+
+
+def report_shares(shares: SortedShares) -> None:
+    for (index, (author, fraction)) in enumerate(sorted_shares):
+        rank = index + 1
+        print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
 
 
 if __name__ == "__main__":
@@ -66,10 +85,6 @@ if __name__ == "__main__":
 
     combined_shares = combine_shares(log_shares, blame_shares)
 
-    shares_items = list(combined_shares.items())
-    sorted_shares = sorted(shares_items, key=lambda item: item[1], reverse=True)
+    sorted_shares = sort_shares(combined_shares)
 
-    for (index, (author, fraction)) in enumerate(sorted_shares):
-        rank = index + 1
-        percentage = fraction * 100
-        print("#{:>2}  {}  ({:.1%})".format(rank, author, fraction))
+    report_shares(sorted_shares)
