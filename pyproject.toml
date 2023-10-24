@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "git-owner"
+version = "0.1.0"
+description = ""
+authors = ["Marek Suchánek <msuchane@redhat.com>"]
+readme = "README.md"
+packages = [{include = "git_owner"}]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+gitpython = "^3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
