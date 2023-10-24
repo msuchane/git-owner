@@ -4,7 +4,7 @@ Estimate who the approximate owner of a file is in a Git repository. Take into a
 
 ## Installation
 
-The tool is currently packaged for Fedora, CnetOS Stream, and RHEL.
+The tool is currently packaged for Fedora, CentOS Stream, and RHEL.
 
 1. Enable the RPM repository:
 
