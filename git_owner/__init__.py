@@ -136,7 +136,7 @@ def likely_owner(shares: SortedShares) -> str:
     return author
 
 
-def estimate_file(file: str, args: argparse.Namespace) -> None:
+def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
     if args.only_log:
         from_log = log_contributors(file, args.names)
         log_shares = contributor_shares(from_log)
@@ -159,10 +159,14 @@ def estimate_file(file: str, args: argparse.Namespace) -> None:
         combined_shares = combine_shares(log_shares, blame_shares)
         sorted_shares = sort_shares(combined_shares)
 
+        return sorted_shares
+
+
+def print_report(shares: SortedShares, args: argparse.Namespace) -> None:
     if args.most_likely:
-        print(likely_owner(sorted_shares))
+        print(likely_owner(shares))
     else:
-        report_shares(sorted_shares)
+        report_shares(shares)
 
 
 if __name__ == "__main__":
@@ -176,4 +180,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
 
     for file in args.files:
-        estimate_file(file, args)
+        shares = estimate_file(file, args)
+        print_report(shares, args)
