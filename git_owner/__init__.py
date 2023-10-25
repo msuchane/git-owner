@@ -5,6 +5,7 @@ from collections import Counter
 import logging
 import re
 import subprocess
+from threading import Thread
 from typing import Optional
 
 
@@ -51,7 +52,7 @@ def cli() -> argparse.Namespace:
     return args
 
 
-def log_contributors(file: str, names: bool) -> list[str]:
+def log_contributors(file: str, names: bool, output: Optional[list] = None) -> list[str]:
     if names:
         user_format = r"%an"
     else:
@@ -60,10 +61,13 @@ def log_contributors(file: str, names: bool) -> list[str]:
     log = subprocess.run(["git", "log", "--follow", f"--format={user_format}", file], stdout=subprocess.PIPE)
     contributors = log.stdout.decode().splitlines()
 
+    if output is not None:
+        output.append(contributors)
+
     return contributors
 
 
-def blame_contributors(file: str, names: bool) -> list[str]:
+def blame_contributors(file: str, names: bool, output: Optional[list] = None) -> list[str]:
     blame_contributors = []
 
     blame = subprocess.run(["git", "blame", "--line-porcelain", file], stdout=subprocess.PIPE)
@@ -80,6 +84,9 @@ def blame_contributors(file: str, names: bool) -> list[str]:
         if re_match is not None:
             captured = re_match.group(1)
             blame_contributors.append(captured)
+
+    if output is not None:
+        output.append(blame_contributors)
 
     return blame_contributors
 
@@ -143,12 +150,23 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
     else:
-        from_log = log_contributors(file, args.names)
-        log_shares = contributor_shares(from_log)
+        # Prepare mutable output variables for the later threads.
+        Buffer = list[list[str]]
+        from_log_buffer: Buffer = []
+        from_blame_buffer: Buffer = []
+        # The threads store return values in the mutable list variables.
+        t1 = Thread(target=log_contributors, args=[file, args.names, from_log_buffer])
+        t2 = Thread(target=blame_contributors, args=[file, args.names, from_blame_buffer])
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        # The threads have finished now.
+
+        log_shares = contributor_shares(from_log_buffer[0])
         logging.debug(f"Contributors in log:\n{log_shares}")
 
-        from_blame = blame_contributors(file, args.names)
-        blame_shares = contributor_shares(from_blame)
+        blame_shares = contributor_shares(from_blame_buffer[0])
         logging.debug(f"Contributors in blame:\n{blame_shares}")
 
         combined_shares = combine_shares(log_shares, blame_shares)
