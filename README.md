@@ -29,5 +29,5 @@ The tool is currently packaged for Fedora, CentOS Stream, and RHEL.
 * See available options:
 
     ```
-    git-repository]$ git owner --help
+    git-repository]$ git-owner --help
     ```
