@@ -5,6 +5,7 @@ from collections import Counter
 import logging
 import re
 import subprocess
+import sys
 from threading import Thread
 from typing import Optional
 
@@ -58,7 +59,14 @@ def log_contributors(file: str, names: bool, output: Optional[list] = None) -> l
     else:
         user_format = r"%ae"
 
-    log = subprocess.run(["git", "log", "--follow", f"--format={user_format}", file], stdout=subprocess.PIPE)
+    try:
+        log = subprocess.run(["git", "log", "--follow", f"--format={user_format}", file],
+            capture_output=True,
+            check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"The git log command failed:\n{e.stderr.decode()}")
+        sys.exit(1)
+
     contributors = log.stdout.decode().splitlines()
 
     if output is not None:
@@ -70,7 +78,14 @@ def log_contributors(file: str, names: bool, output: Optional[list] = None) -> l
 def blame_contributors(file: str, names: bool, output: Optional[list] = None) -> list[str]:
     blame_contributors = []
 
-    blame = subprocess.run(["git", "blame", "--line-porcelain", file], stdout=subprocess.PIPE)
+    try:
+        blame = subprocess.run(["git", "blame", "--line-porcelain", file],
+        capture_output=True,
+        check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"The git blame command failed:\n{e.stderr.decode()}")
+        sys.exit(1)
+
     blame_text = blame.stdout.decode().splitlines()
 
     if names:
@@ -163,10 +178,14 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         t2.join()
         # The threads have finished now.
 
-        log_shares = contributor_shares(from_log_buffer[0])
-        logging.debug(f"Contributors in log:\n{log_shares}")
+        # If either of the buffers is empty. the git command failed. Exit.
+        if len(from_log_buffer) == 0 or len(from_blame_buffer) == 0:
+            sys.exit(1)
 
+        log_shares = contributor_shares(from_log_buffer[0])
         blame_shares = contributor_shares(from_blame_buffer[0])
+
+        logging.debug(f"Contributors in log:\n{log_shares}")
         logging.debug(f"Contributors in blame:\n{blame_shares}")
 
         combined_shares = combine_shares(log_shares, blame_shares)
