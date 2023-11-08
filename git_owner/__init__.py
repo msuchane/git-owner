@@ -30,6 +30,11 @@ def cli() -> argparse.Namespace:
         action='store_true',
         help='Identify users by name rather than by email.')
     parser.add_argument(
+        '-p',
+        '--placeholder',
+        metavar="OWNER",
+        help='If Git fails to analyze the given file, show this placeholder as owner.')
+    parser.add_argument(
         '-v',
         '--verbose',
         action='store_true',
