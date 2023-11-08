@@ -53,7 +53,7 @@ def cli() -> argparse.Namespace:
     return args
 
 
-def log_contributors(file: str, names: bool, output: Optional[list] = None) -> list[str]:
+def log_contributors(file: str, names: bool, output: dict) -> None:
     if names:
         user_format = r"%an"
     else:
@@ -65,17 +65,14 @@ def log_contributors(file: str, names: bool, output: Optional[list] = None) -> l
             check=True)
     except subprocess.CalledProcessError as e:
         logging.error(f"The git log command failed:\n{e.stderr.decode()}")
-        sys.exit(1)
+        return
 
     contributors = log.stdout.decode().splitlines()
 
-    if output is not None:
-        output.append(contributors)
-
-    return contributors
+    output["log"] = contributors
 
 
-def blame_contributors(file: str, names: bool, output: Optional[list] = None) -> list[str]:
+def blame_contributors(file: str, names: bool, output: dict) -> None:
     blame_contributors = []
 
     try:
@@ -84,7 +81,7 @@ def blame_contributors(file: str, names: bool, output: Optional[list] = None) ->
         check=True)
     except subprocess.CalledProcessError as e:
         logging.error(f"The git blame command failed:\n{e.stderr.decode()}")
-        sys.exit(1)
+        return
 
     blame_text = blame.stdout.decode().splitlines()
 
@@ -100,10 +97,7 @@ def blame_contributors(file: str, names: bool, output: Optional[list] = None) ->
             captured = re_match.group(1)
             blame_contributors.append(captured)
 
-    if output is not None:
-        output.append(blame_contributors)
-
-    return blame_contributors
+    output["blame"] = blame_contributors
 
 
 Shares = dict[str, float]
@@ -153,37 +147,55 @@ def likely_owner(shares: SortedShares) -> str:
     return author
 
 
+# The mutable object to store thread results
+Buffer = dict[str, list[str]]
+
+
 def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
+    # Prepare a mutable output object for the later threads.
+    buffer: Buffer = {}
+
     if args.only_log:
-        from_log = log_contributors(file, args.names)
-        log_shares = contributor_shares(from_log)
+        log_contributors(file, args.names, buffer)
+
+        try:
+            log_shares = contributor_shares(buffer["log"])
+        except KeyError:
+            sys.exit(1)
+
         logging.debug(f"Contributors:\n{log_shares}")
         sorted_shares = sort_shares(log_shares)
+
     elif args.only_blame:
-        from_blame = blame_contributors(file, args.names)
-        blame_shares = contributor_shares(from_blame)
+        blame_contributors(file, args.names, buffer)
+
+        try:
+            blame_shares = contributor_shares(buffer["blame"])
+        except KeyError:
+            sys.exit(1)
+
         logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
+
     else:
-        # Prepare mutable output variables for the later threads.
-        Buffer = list[list[str]]
-        from_log_buffer: Buffer = []
-        from_blame_buffer: Buffer = []
-        # The threads store return values in the mutable list variables.
-        t1 = Thread(target=log_contributors, args=[file, args.names, from_log_buffer])
-        t2 = Thread(target=blame_contributors, args=[file, args.names, from_blame_buffer])
+        # The threads store return values in the mutable object.
+        t1 = Thread(target=log_contributors, args=[file, args.names, buffer])
+        t2 = Thread(target=blame_contributors, args=[file, args.names, buffer])
         t1.start()
         t2.start()
         t1.join()
         t2.join()
         # The threads have finished now.
 
-        # If either of the buffers is empty. the git command failed. Exit.
-        if len(from_log_buffer) == 0 or len(from_blame_buffer) == 0:
+        # If either of the buffers is empty, the git command failed. Exit.
+        try:
+            log = buffer["log"]
+            blame = buffer["blame"]
+        except KeyError:
             sys.exit(1)
 
-        log_shares = contributor_shares(from_log_buffer[0])
-        blame_shares = contributor_shares(from_blame_buffer[0])
+        log_shares = contributor_shares(log)
+        blame_shares = contributor_shares(blame)
 
         logging.debug(f"Contributors in log:\n{log_shares}")
         logging.debug(f"Contributors in blame:\n{blame_shares}")
