@@ -10,6 +10,9 @@ from threading import Thread
 from typing import Optional
 
 
+EXIT_CODE = 0
+
+
 def cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog='git-owner',
@@ -166,7 +169,7 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         try:
             log_shares = contributor_shares(buffer["log"])
         except KeyError:
-            exit_no_owner(file, args)
+            log_shares = exit_no_owner(file, args)
 
         logging.debug(f"Contributors:\n{log_shares}")
         sorted_shares = sort_shares(log_shares)
@@ -177,7 +180,7 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         try:
             blame_shares = contributor_shares(buffer["blame"])
         except KeyError:
-            exit_no_owner(file, args)
+            blame_shares = exit_no_owner(file, args)
 
         logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
@@ -192,15 +195,14 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         t2.join()
         # The threads have finished now.
 
-        # If either of the buffers is empty, the git command failed. Exit.
+        # If either of the buffers is empty, the git command failed.
+        # Exit or work with placeholders.
         try:
-            log = buffer["log"]
-            blame = buffer["blame"]
+            log_shares = contributor_shares(buffer["log"])
+            blame_shares = contributor_shares(buffer["blame"])
         except KeyError:
-            exit_no_owner(file, args)
-
-        log_shares = contributor_shares(log)
-        blame_shares = contributor_shares(blame)
+            log_shares = exit_no_owner(file, args)
+            blame_shares = exit_no_owner(file, args)
 
         logging.debug(f"Contributors in log:\n{log_shares}")
         logging.debug(f"Contributors in blame:\n{blame_shares}")
@@ -230,16 +232,22 @@ def print_report(shares: SortedShares, file: str, args: argparse.Namespace) -> N
         report_shares(shares, header)
 
 
-def exit_no_owner(file: str, args: argparse.Namespace) -> None:
+def exit_no_owner(file: str, args: argparse.Namespace) -> Shares:
+    """
+    Git couldn't analyze the ownership of the file.
+    Either exit the program, or return fake, placeholder data for further reports.
+    """
     if args.placeholder is None:
         sys.exit(1)
+    else:
+        # Still record an error status
+        global EXIT_CODE
+        EXIT_CODE = 1
 
-    # The placeholder owner pretends to own the whole failed file.
-    placeholder_shares = [(args.placeholder, 1.0)]
+        # The placeholder owner pretends to own the whole failed file.
+        placeholder_shares = {args.placeholder: 1.0}
 
-    print_report(placeholder_shares, file, args)
-
-    sys.exit(1)
+        return placeholder_shares
 
 
 if __name__ == "__main__":
@@ -255,3 +263,5 @@ if __name__ == "__main__":
     for file in args.files:
         shares = estimate_file(file, args)
         print_report(shares, file, args)
+
+    sys.exit(EXIT_CODE)
