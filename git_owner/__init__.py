@@ -166,7 +166,7 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         try:
             log_shares = contributor_shares(buffer["log"])
         except KeyError:
-            exit_no_owner(args)
+            exit_no_owner(file, args)
 
         logging.debug(f"Contributors:\n{log_shares}")
         sorted_shares = sort_shares(log_shares)
@@ -177,7 +177,7 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
         try:
             blame_shares = contributor_shares(buffer["blame"])
         except KeyError:
-            exit_no_owner(args)
+            exit_no_owner(file, args)
 
         logging.debug(f"Contributors:\n{blame_shares}")
         sorted_shares = sort_shares(blame_shares)
@@ -197,7 +197,7 @@ def estimate_file(file: str, args: argparse.Namespace) -> SortedShares:
             log = buffer["log"]
             blame = buffer["blame"]
         except KeyError:
-            exit_no_owner(args)
+            exit_no_owner(file, args)
 
         log_shares = contributor_shares(log)
         blame_shares = contributor_shares(blame)
@@ -230,23 +230,14 @@ def print_report(shares: SortedShares, file: str, args: argparse.Namespace) -> N
         report_shares(shares, header)
 
 
-def exit_no_owner(args: argparse.Namespace) -> None:
+def exit_no_owner(file: str, args: argparse.Namespace) -> None:
     if args.placeholder is None:
         sys.exit(1)
-
-    if args.most_likely:
-        print(args.placeholder)
-        sys.exit(1)
-        
-    if len(args.files) > 1:
-        header = file
-    else:
-        header = None
 
     # The placeholder owner pretends to own the whole failed file.
     placeholder_shares = [(args.placeholder, 1.0)]
 
-    report_shares(placeholder_shares, header)
+    print_report(placeholder_shares, file, args)
 
     sys.exit(1)
 
